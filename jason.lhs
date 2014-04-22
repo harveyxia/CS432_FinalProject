@@ -37,6 +37,13 @@ Final project sound effects
 >           s <- osc sinTab 0 <<< constA (f*p) -< ()
 >           outA -< s * (amp p)
 
+
+> ramp1 :: AudSF () Double
+> ramp1 = proc afrq -> do
+>   env <- envLine 20 10 20000 -< ()
+>   sig <- osc sinTab 0 -< env
+>   outA -< sig
+
 SOURCES:
 - http://en.wikipedia.org/wiki/Phaser_(effect)
 - https://ccrma.stanford.edu/~jos/pasp/Allpass_Two_Combs.html
@@ -46,19 +53,6 @@ SOURCES:
 Phaser effects
 Uses phase shifting to create an interesting undulating sound
 ================================================================================
-
-> ramp1 :: AudSF () Double
-> ramp1 = proc afrq -> do
->   env <- envLine 20 10 20000 -< ()
->   sig <- osc sinTab 0 -< env
->   outA -< sig
-
---> filterComb :: Double -> Double -> AudSF Double Double
---> filterComb dur ga =
--->   proc s -> do
--->       out1 <- delayLine dur -< s
--->       outA -< s  + out1 * ga
-
 
 An all-pass filter that shifts the phase of the signal by a changing amount,
 determined by the frequency of a sinusoidal modulator signal.
@@ -88,6 +82,16 @@ This phaser is implemented with 4 all pass filters to intensify the sweep-effect
 >       out4 <- filterAllPass dmin dmax freq g -< out3
 >       outA -< (s + (out4 * depth))
 
+> tPhaser :: AudSF () Double
+> tPhaser = proc () -> do
+>       s <- violin (absPitch (A, 5)) -< ()
+>       f <- phaser 0.05 0.15 0.6 0.6 1 -< s
+>       outA -< f / 5
+
+> testPhaser = outFile "phaser.wav" 10 tPhaser
+
+================================================================================
+
 A fuzzbox effect that clips off the peaks of a signal to produce a distorted,
 "dirty" electric guitar sound.
 
@@ -95,8 +99,8 @@ dep = depth of distortion
 
 > fuzzbox :: Double -> AudSF Double Double
 > fuzzbox dep =
->	proc s -> do
->		outA -< if (abs (s*(1+dep))) > 1 then (if s < 0 then (-1) else 1) else s
+>   proc s -> do
+>       outA -< if (abs (s*(1+dep))) > 1 then (if s < 0 then (-1) else 1) else s
 
 > vibrato :: Clock c => Double -> Double -> SigFun c Double Double
 > vibrato vfrq dep = proc afrq -> do
@@ -118,11 +122,3 @@ dep = depth of distortion
 >         outA -< a * v
 
 > testFB = outFile "fuzzbox.wav" 5 ((fuzzbox 0.7) <<< (electro 10 35 20 []))
-
-> tPhaser :: AudSF () Double
-> tPhaser = proc () -> do
->       s <- violin (absPitch (A, 5)) -< ()
->       f <- phaser 0.05 0.15 0.6 0.6 1 -< s
->       outA -< f / 5
-
-> testPhaser = outFile "phaser.wav" 10 tPhaser

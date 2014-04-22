@@ -66,6 +66,13 @@ If depth is set to a negative value, the flanger is in inverted mode.
 
 > testFlanger = outFile "flanger.wav" 5 tFlanger
 
+freq = frequency of low frequency modulator
+depth = amplitude coefficient for chorus effect
+
+Chorus is implemented with 4 delay lines, each delaying the original signal
+by a time-varying amount (between 20 and 50 ms), according to sin waves that are
+each offset by a different phase.
+
 > chorus :: Double -> Double -> AudSF Double Double
 > chorus freq depth = proc s -> do
 >           sin1 <- osc sinTab 0 -< freq
@@ -76,7 +83,7 @@ If depth is set to a negative value, the flanger is in inverted mode.
 >           c2 <- delayLine1 1 -< (s, 0.033 + 0.001*sin2)
 >           c3 <- delayLine1 1 -< (s, 0.047 + 0.001*sin3)
 >           c4 <- delayLine1 1 -< (s, 0.036 + 0.001*sin4)
->           outA -< (c1 + c2 + c3 + c4 + s)
+>           outA -< (c1 + c2 + c3 + c4)*depth + s
 
 > tChorus :: AudSF () Double
 > tChorus = proc () -> do
