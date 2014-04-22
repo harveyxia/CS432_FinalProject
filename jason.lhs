@@ -48,6 +48,7 @@ SOURCES:
 - http://en.wikipedia.org/wiki/Phaser_(effect)
 - https://ccrma.stanford.edu/~jos/pasp/Allpass_Two_Combs.html
 - https://ccrma.stanford.edu/~jos/pasp/Phasing_First_Order_Allpass_Filters.html
+- http://en.wikipedia.org/wiki/Distortion_(music)
 
 ================================================================================
 Phaser effects
