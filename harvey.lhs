@@ -3,7 +3,7 @@
 > import Control.Arrow ((>>>),(<<<),arr)
 > import Control.SF.AuxFunctions
 
-> sinTab = tableSines 4096 [1]
+> sinTab = tableSinesN 4096 [1]
 
 =======================================================
 
@@ -29,8 +29,8 @@ If depth is set to a negative value, the flanger is in inverted mode.
 
 > tFlanger :: AudSF () Double
 > tFlanger = proc () -> do
->       rec s <- osc sinTab 0 -< 440
->           f <- flanger 0.05 0.15 0.6 0.6 -< s
+>       s <- osc sinTab 0 -< 440
+>       f <- flanger 0.05 0.15 0.6 0.6 -< s
 >       outA -< f/5
 
 > testFlanger = outFile "flanger.wav" 5 tFlanger

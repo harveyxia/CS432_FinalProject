@@ -9,6 +9,11 @@ Final project sound effects
 > sinTab :: Table
 > sinTab = tableSinesN 4096 [1]
 
+SOURCES:
+- http://en.wikipedia.org/wiki/Phaser_(effect)
+- https://ccrma.stanford.edu/~jos/pasp/Allpass_Two_Combs.html
+- https://ccrma.stanford.edu/~jos/pasp/Phasing_First_Order_Allpass_Filters.html
+
 ================================================================================
 Phaser effects
 Uses phase shifting to create an interesting undulating sound
@@ -26,23 +31,40 @@ Uses phase shifting to create an interesting undulating sound
 -->       out1 <- delayLine dur -< s
 -->       outA -< s  + out1 * ga
 
-> filterAllPass :: Double -> Double -> AudSF Double Double
-> filterAllPass dur ga =
->   proc s -> do
->       rec out1 <- delayLine dur -< s + out1 * ga
->       outA -< (out1 - (s + out1 * ga) * ga)
 
-> phaser :: Double -> Double -> Double -> AudSF Double Double
-> phaser dur dep ga =
->   proc s -> do
->       out1 <- filterAllPass dur ga -< s
->       outA -< (s + out1 * dep) / 5
+An all-pass filter that shifts the phase of the signal by a changing amount,
+determined by the frequency of a sinusoidal modulator signal.
 
-> testSig :: AudSF () Double
-> testSig =
->   proc () -> do
+dmin = minimum delay time in seconds
+dmax = maximum delay time in seconds
+freq = frequency of the low frequency modulator (for delay time)
+g = feedforward and feedbackward coefficient
+
+> filterAllPass :: Double -> Double -> Double -> Double -> AudSF Double Double
+> filterAllPass dmin dmax freq g =
+>       let middle = (dmin + dmax)/2
+>           mod = dmax - middle
+>       in proc s -> do
+>           sin <- osc sinTab 0 -< freq
+>           rec out1 <- delayLine1 1 -< (s + out1 * g, middle + (mod * sin))
+>           outA -< (out1 * (-g)) + out1
+
+This phaser is implemented with 4 all pass filters to intensify the sweep-effect.
+
+> phaser :: Double -> Double -> Double -> Double -> Double -> AudSF Double Double
+> phaser dmin dmax freq g depth =
+>   proc s -> do
+>       out1 <- filterAllPass dmin dmax freq g -< s
+>       out2 <- filterAllPass dmin dmax freq g -< out1
+>       out3 <- filterAllPass dmin dmax freq g -< out2
+>       out4 <- filterAllPass dmin dmax freq g -< out3
+>       outA -< (s + (out4 * depth))
+
+
+> tPhaser :: AudSF () Double
+> tPhaser = proc () -> do
 >       s <- osc sinTab 0 -< 440
->       outA -< s
+>       f <- phaser 0.05 0.15 0.6 0.6 1 -< s
+>       outA -< f / 5
 
-> test1 = outFile "phaser.wav" 10 ((filterComb 0.2) <<< ((constA 440) ramp1))
-
+> testPhaser = outFile "phaser.wav" 10 tPhaser
