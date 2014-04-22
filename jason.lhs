@@ -88,6 +88,36 @@ This phaser is implemented with 4 all pass filters to intensify the sweep-effect
 >       out4 <- filterAllPass dmin dmax freq g -< out3
 >       outA -< (s + (out4 * depth))
 
+A fuzzbox effect that clips off the peaks of a signal to produce a distorted,
+"dirty" electric guitar sound.
+
+dep = depth of distortion
+
+> fuzzbox :: Double -> AudSF Double Double
+> fuzzbox dep =
+>	proc s -> do
+>		outA -< if (abs (s*(1+dep))) > 1 then (if s < 0 then (-1) else 1) else s
+
+> vibrato :: Clock c => Double -> Double -> SigFun c Double Double
+> vibrato vfrq dep = proc afrq -> do
+>               vib <- osc sinTab 0 -< vfrq
+>               aud <- osc sinTab 0 -< afrq + vib * dep
+>               outA -< aud
+
+> electro :: Instr (Mono AudRate)
+> electro dur ap vol [] =
+>     let f    = apToHz ap
+>         v    = fromIntegral vol / 100
+>         fund = (constA f >>> osc sinTab 0)
+>         ots  = (map (\p -> constA (f * p) >>> vibrato 18 10)
+>                  [2, 3, 4])
+>         sfs  = fund : ots
+>         sig  = foldSF (+) 0 sfs
+>     in proc () -> do
+>         a <- sig -< ()
+>         outA -< a * v
+
+> testFB = outFile "fuzzbox.wav" 5 ((fuzzbox 0.7) <<< (electro 10 35 20 []))
 
 > tPhaser :: AudSF () Double
 > tPhaser = proc () -> do
