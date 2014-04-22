@@ -9,6 +9,34 @@ Final project sound effects
 > sinTab :: Table
 > sinTab = tableSinesN 4096 [1]
 
+> violin :: AbsPitch -> AudSF () Double
+> violin ap =
+>       let f     = apToHz ap
+>           sfs   = map (mySF f)
+>                           [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+>       in proc () -> do
+>           a <- foldSF (+) 0 sfs -< ()
+>           outA -< a / 5
+
+> mySF f p =
+>       let amp x =
+>               case x of
+>                   1 -> 1
+>                   2 -> 1.2
+>                   3 -> 0.4
+>                   4 -> 0.04
+>                   5 -> 0.3
+>                   6 -> 0.35
+>                   7 -> 0.03
+>                   8 -> 0.6
+>                   9 -> 0.009
+>                   10 -> 0.02
+>                   11 -> 0.04
+>                   _  -> 0
+>       in proc () -> do
+>           s <- osc sinTab 0 <<< constA (f*p) -< ()
+>           outA -< s * (amp p)
+
 SOURCES:
 - http://en.wikipedia.org/wiki/Phaser_(effect)
 - https://ccrma.stanford.edu/~jos/pasp/Allpass_Two_Combs.html
@@ -63,7 +91,7 @@ This phaser is implemented with 4 all pass filters to intensify the sweep-effect
 
 > tPhaser :: AudSF () Double
 > tPhaser = proc () -> do
->       s <- osc sinTab 0 -< 440
+>       s <- violin (absPitch (A, 5)) -< ()
 >       f <- phaser 0.05 0.15 0.6 0.6 1 -< s
 >       outA -< f / 5
 
