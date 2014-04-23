@@ -48,6 +48,9 @@ SOURCES:
 - http://en.wikipedia.org/wiki/Phaser_(effect)
 - https://ccrma.stanford.edu/~jos/pasp/Allpass_Two_Combs.html
 - https://ccrma.stanford.edu/~jos/pasp/Phasing_First_Order_Allpass_Filters.html
+- https://ccrma.stanford.edu/~jos/pasp/Schroeder_Reverberators.html
+
+- https://ccrma.stanford.edu/software/clm/compmus/clm-tutorials/processing2.html
 
 ================================================================================
 Phaser effects
@@ -122,3 +125,43 @@ dep = depth of distortion
 >         outA -< a * v
 
 > testFB = outFile "fuzzbox.wav" 5 ((fuzzbox 0.7) <<< (electro 10 35 20 []))
+
+================================================================================
+
+This reverb implementation is based on Manfred Shroeder's model. A signal is
+first passed through a parallel bank of feedback comb filters.  The output of
+the comb filters are added and fed into a series of three all-pass filters.
+Delay values of these all-pass filters are mutually prime to prevent any mutual
+periodicity between their outputs.
+
+> allPassSection :: AudSF Double Double
+> allPassSection = proc s -> do
+>       s1 <- filterAllPass 0.100 0.100 0 0.7 -< s
+>       s2 <- filterAllPass 0.033 0.033 0 0.7 -< s1
+>       s3 <- filterAllPass 0.011 0.011 0 0.7 -< s2
+>       outA -< s3
+
+> feedbackFilter :: Double -> Double -> Double -> AudSF Double Double
+> feedbackFilter del a b = proc s -> do
+>       rec d <- delayLine del -< s + (-a)*d
+>       outA -< b*d
+
+> schroederRev :: AudSF Double Double
+> schroederRev = proc s -> do
+>       c1 <- feedbackFilter 0.033 0.773 1 -< s
+>       c2 <- feedbackFilter 0.037 0.802 1 -< s
+>       c3 <- feedbackFilter 0.041 0.753 1 -< s
+>       c4 <- feedbackFilter 0.045 0.733 1 -< s
+>       f <- allPassSection -< (c1 + c2 + c3 + c4)
+>       outA -< f
+
+Test with a short note.
+
+> tRev :: AudSF () Double
+> tRev = proc () -> do
+>       env <- envLineSeg [1,1,0,0] [0.05,0.05,5] -< ()
+>       s <- violin (absPitch (C, 5)) -< ()
+>       f <- schroederRev -< s*env
+>       outA -< f
+
+> testRev = outFile "shroeder.wav" 5 tRev

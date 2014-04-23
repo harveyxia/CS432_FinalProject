@@ -66,6 +66,8 @@ If depth is set to a negative value, the flanger is in inverted mode.
 
 > testFlanger = outFile "flanger.wav" 5 tFlanger
 
+================================================================================
+
 freq = frequency of low frequency modulator
 depth = amplitude coefficient for chorus effect
 
