@@ -165,3 +165,16 @@ Test with a short note.
 >       outA -< f
 
 > testRev = outFile "shroeder.wav" 5 tRev
+
+================================================================================
+
+Welcome to R&D.
+
+> myscifi1 :: Instr (Mono AudRate)
+> myscifi1 dur ap vol [] =
+>   let v = fromIntegral vol / 100 in proc () -> do
+>       a1   <- noiseBLH 42 -< 3
+>       a2   <- osc sinTab 0 -< [440, 466.164, 493.883, 523.251, 554.365, 587.330, 622.254, 659.255, 698.456, 739.989, 783.991, 830.609]!!(round ((a1 ^ 2) * 11))
+>       outA -< a2 * v
+
+> test3 = outFile "scifi.wav" 10 (schroederRev <<< (myscifi1 10 (absPitch (C, 5)) 100 []))
