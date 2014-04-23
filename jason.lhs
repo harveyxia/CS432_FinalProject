@@ -131,14 +131,22 @@ dep = depth of distortion
 This reverb implementation is based on Manfred Shroeder's model. A signal is
 first passed through a parallel bank of feedback comb filters.  The output of
 the comb filters are added and fed into a series of three all-pass filters.
+
 Delay values of these all-pass filters are mutually prime to prevent any mutual
 periodicity between their outputs.
 
+toS is a function that converts a delay time in terms of table size to its
+corresponding delay in terms of seconds. In other words, toS outputs the seconds
+that it would take to sample through a table of size s at a rate of 44.1 kHz.
+
+> toS :: Double -> Double
+> toS s = (s / 44100)
+
 > allPassSection :: AudSF Double Double
 > allPassSection = proc s -> do
->       s1 <- filterAllPass 0.100 0.100 0 0.7 -< s
->       s2 <- filterAllPass 0.033 0.033 0 0.7 -< s1
->       s3 <- filterAllPass 0.011 0.011 0 0.7 -< s2
+>       s1 <- filterAllPass (toS 347) (toS 347) 0 0.7 -< s
+>       s2 <- filterAllPass (toS 113) (toS 113) 0 0.7 -< s1
+>       s3 <- filterAllPass (toS 37) (toS 37) 0 0.7 -< s2
 >       outA -< s3
 
 > feedbackFilter :: Double -> Double -> Double -> AudSF Double Double
@@ -148,10 +156,10 @@ periodicity between their outputs.
 
 > schroederRev :: AudSF Double Double
 > schroederRev = proc s -> do
->       c1 <- feedbackFilter 0.033 0.773 1 -< s
->       c2 <- feedbackFilter 0.037 0.802 1 -< s
->       c3 <- feedbackFilter 0.041 0.753 1 -< s
->       c4 <- feedbackFilter 0.045 0.733 1 -< s
+>       c1 <- feedbackFilter (toS 1687) 0.773 1 -< s
+>       c2 <- feedbackFilter (toS 1601) 0.802 1 -< s
+>       c3 <- feedbackFilter (toS 2053) 0.753 1 -< s
+>       c4 <- feedbackFilter (toS 2251) 0.733 1 -< s
 >       f <- allPassSection -< (c1 + c2 + c3 + c4)
 >       outA -< f
 
@@ -159,10 +167,10 @@ Test with a short note.
 
 > tRev :: AudSF () Double
 > tRev = proc () -> do
->       env <- envLineSeg [1,1,0,0] [0.05,0.05,5] -< ()
->       s <- violin (absPitch (C, 5)) -< ()
+>       env <- envLineSeg [0,1,0,0] [0.05,0.25,5] -< ()
+>       s <- violin (absPitch (A, 5)) -< ()
 >       f <- schroederRev -< s*env
->       outA -< f
+>       outA -< f/3
 
 > testRev = outFile "shroeder.wav" 5 tRev
 
