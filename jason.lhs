@@ -49,8 +49,8 @@ SOURCES:
 - https://ccrma.stanford.edu/~jos/pasp/Allpass_Two_Combs.html
 - https://ccrma.stanford.edu/~jos/pasp/Phasing_First_Order_Allpass_Filters.html
 - https://ccrma.stanford.edu/~jos/pasp/Schroeder_Reverberators.html
-
 - https://ccrma.stanford.edu/software/clm/compmus/clm-tutorials/processing2.html
+- http://en.wikipedia.org/wiki/Distortion_(music)
 
 ================================================================================
 Phaser effects
