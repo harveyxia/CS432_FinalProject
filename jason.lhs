@@ -22,29 +22,28 @@ Utility Code
 > sinTab :: Table
 > sinTab = tableSinesN 4096 [1]
 
-> violin :: AbsPitch -> AudSF () Double
-> violin ap =
+> clarinet :: Instr (Mono AudRate)
+> clarinet dur ap vol [] =
 >       let f     = apToHz ap
->           sfs   = map (mySF f)
->                           [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+>           v     = fromIntegral vol
+>           d     = fromRational dur
+>           sfs   = map (mySF f d)
+>                           [1, 3, 5, 7, 9, 11, 13]
 >       in proc () -> do
+>           env <- envASR (d/8) d (d/5) -< ()
 >           a <- foldSF (+) 0 sfs -< ()
->           outA -< a / 5
+>           outA -< a * env * v / 3
 
-> mySF f p =
+> mySF f d p =
 >       let amp x =
 >               case x of
 >                   1 -> 1
->                   2 -> 1.2
->                   3 -> 0.4
->                   4 -> 0.04
->                   5 -> 0.3
->                   6 -> 0.35
->                   7 -> 0.03
->                   8 -> 0.6
->                   9 -> 0.009
->                   10 -> 0.02
->                   11 -> 0.04
+>                   3 -> 0.75
+>                   5 -> 0.5
+>                   7 -> 0.14
+>                   9 -> 0.5
+>                   11 -> 0.12
+>                   13 -> 0.17
 >                   _  -> 0
 >       in proc () -> do
 >           s <- osc sinTab 0 <<< constA (f*p) -< ()
@@ -86,7 +85,7 @@ If depth is set to a negative value, the flanger is in inverted mode.
 
 > tFlanger :: AudSF () Double
 > tFlanger = proc () -> do
->       s <- violin (absPitch (A, 5)) -< ()
+>       s <- clarinet 5 (absPitch (A, 5)) 3 [] -< ()
 >       f <- flanger (toS 50) (toS 2000) 0.4 1 -< s
 >       outA -< f/5
 
@@ -117,7 +116,7 @@ each offset by a different phase.
 
 > tChorus :: AudSF () Double
 > tChorus = proc () -> do
->       s <- violin (absPitch (A, 5)) -< ()
+>       s <- clarinet 5 (absPitch (A, 5)) 3 [] -< ()
 >       f <- chorus 0.6 1 -< s
 >       outA -< f/5
 
@@ -158,7 +157,7 @@ This phaser is implemented with 4 all pass filters to intensify the sweep-effect
 
 > tPhaser :: AudSF () Double
 > tPhaser = proc () -> do
->       s <- violin (absPitch (A, 5)) -< ()
+>       s <- clarinet 5 (absPitch (A, 5)) 3 [] -< ()
 >       f <- phaser 0.05 0.15 0.6 0.6 1 -< s
 >       outA -< f / 5
 
@@ -236,7 +235,7 @@ Test with a short note.
 > tRev :: AudSF () Double
 > tRev = proc () -> do
 >       env <- envLineSeg [0,1,0,0] [0.05,0.25,5] -< ()
->       s <- violin (absPitch (A, 5)) -< ()
+>       s <- clarinet 5 (absPitch (A, 5)) 3 [] -< ()
 >       f <- schroederRev -< s*env
 >       outA -< f/3
 
@@ -253,12 +252,14 @@ Welcome to R&D.
 >                    (absPitch (C,4)), (absPitch (D,4)), (absPitch (E,4)),
 >                    (absPitch (G,4)), (absPitch (A,4))]
 
+> mel = [(absPitch (C,5)), (absPitch (D,5)), (absPitch (E,5))]
+
 > myscifi1 :: Instr (Mono AudRate)
 > myscifi1 dur ap vol [] =
 >   let v = fromIntegral vol / 100 in proc () -> do
->       a1   <- noiseBLH 42 -< 7
+>       a1   <- noiseBLH 42 -< 5
 >       a2   <- osc sinTab 0 -< (map(apToHz)pentatonicScale)!!(round ((a1^2) * 9))
 >       outA -< a2 * v
 
-> test3 = outFile "scifi.wav" 10
->                      (schroederRev <<< (myscifi1 10 (absPitch (C, 5)) 20 []))
+> test3 = let a = (schroederRev <<< (myscifi1 10 (absPitch (C, 5)) 20 []))
+>         in outFile "scifi.wav" 10 a
