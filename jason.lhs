@@ -4,7 +4,20 @@
 > import Control.Arrow ((>>>), (<<<), arr)
 > import Data.Complex
 
-Final project sound effects
+================================================================================
+SOURCES
+================================================================================
+- http://en.wikipedia.org/wiki/Phaser_(effect)
+- https://ccrma.stanford.edu/~jos/pasp/Allpass_Two_Combs.html
+- https://ccrma.stanford.edu/~jos/pasp/Phasing_First_Order_Allpass_Filters.html
+- https://ccrma.stanford.edu/~jos/pasp/Schroeder_Reverberators.html
+- https://ccrma.stanford.edu/software/clm/compmus/clm-tutorials/processing2.html
+- http://en.wikipedia.org/wiki/Distortion_(music)
+- http://www.cs.sfu.ca/~tamaras/delayEffects/Implementation_Chorus.html
+
+================================================================================
+Utility Code
+================================================================================
 
 > sinTab :: Table
 > sinTab = tableSinesN 4096 [1]
@@ -44,14 +57,12 @@ Final project sound effects
 >   sig <- osc sinTab 0 -< env
 >   outA -< sig
 
-SOURCES:
-- http://en.wikipedia.org/wiki/Phaser_(effect)
-- https://ccrma.stanford.edu/~jos/pasp/Allpass_Two_Combs.html
-- https://ccrma.stanford.edu/~jos/pasp/Phasing_First_Order_Allpass_Filters.html
-- https://ccrma.stanford.edu/~jos/pasp/Schroeder_Reverberators.html
-- https://ccrma.stanford.edu/software/clm/compmus/clm-tutorials/processing2.html
-- http://en.wikipedia.org/wiki/Distortion_(music)
-- http://www.cs.sfu.ca/~tamaras/delayEffects/Implementation_Chorus.html
+toS is a function that converts a delay time in terms of table size to its
+corresponding delay in terms of seconds. In other words, toS outputs the seconds
+that it would take to sample through a table of size s at a rate of 44.1 kHz.
+
+> toS :: Double -> Double
+> toS s = (s / 44100)
 
 ================================================================================
 Phaser
@@ -62,9 +73,6 @@ dmax = maximum delay time in seconds
 freq = frequency of the low frequency modulator (for delay time)
 depth = amplitude multiplier for flanged signal
 
-This flanger also incorporates an echo of 0.05 seconds, decay rate 0.3, in
-order to intensify the flanging effect.
-
 If depth is set to a negative value, the flanger is in inverted mode.
 
 > flanger :: Double -> Double -> Double -> Double -> AudSF Double Double
@@ -74,13 +82,12 @@ If depth is set to a negative value, the flanger is in inverted mode.
 >       in proc s -> do
 >           sin <- osc sinTab 0 -< freq
 >           g <- delayLine1 1 -< (s, middle + (mod * sin))
->           rec f <- delayLine 0.05 -< s + (depth * g) + 0.3*f
->           outA -< f
+>           outA -< depth*g + s
 
 > tFlanger :: AudSF () Double
 > tFlanger = proc () -> do
 >       s <- violin (absPitch (A, 5)) -< ()
->       f <- flanger 0.05 0.15 0.6 1 -< s
+>       f <- flanger (toS 50) (toS 2000) 0.4 1 -< s
 >       outA -< f/5
 
 > testFlanger = outFile "flanger.wav" 5 tFlanger
@@ -203,13 +210,6 @@ the comb filters are added and fed into a series of three all-pass filters.
 Delay values of these all-pass filters are mutually prime to prevent any mutual
 periodicity between their outputs.
 
-toS is a function that converts a delay time in terms of table size to its
-corresponding delay in terms of seconds. In other words, toS outputs the seconds
-that it would take to sample through a table of size s at a rate of 44.1 kHz.
-
-> toS :: Double -> Double
-> toS s = (s / 44100)
-
 > allPassSection :: AudSF Double Double
 > allPassSection = proc s -> do
 >       s1 <- filterAllPass (toS 347) (toS 347) 0 0.7 -< s
@@ -248,11 +248,17 @@ Composition
 
 Welcome to R&D.
 
+> pentatonicScale = [(absPitch (C,5)), (absPitch (D,5)), (absPitch (E,5)),
+>                    (absPitch (G,5)), (absPitch (A,5)),
+>                    (absPitch (C,4)), (absPitch (D,4)), (absPitch (E,4)),
+>                    (absPitch (G,4)), (absPitch (A,4))]
+
 > myscifi1 :: Instr (Mono AudRate)
 > myscifi1 dur ap vol [] =
 >   let v = fromIntegral vol / 100 in proc () -> do
->       a1   <- noiseBLH 42 -< 3
->       a2   <- osc sinTab 0 -< [440, 466.164, 493.883, 523.251, 554.365, 587.330, 622.254, 659.255, 698.456, 739.989, 783.991, 830.609]!!(round ((a1 ^ 2) * 11))
+>       a1   <- noiseBLH 42 -< 7
+>       a2   <- osc sinTab 0 -< (map(apToHz)pentatonicScale)!!(round ((a1^2) * 9))
 >       outA -< a2 * v
 
-> test3 = outFile "scifi.wav" 10 (schroederRev <<< (myscifi1 10 (absPitch (C, 5)) 100 []))
+> test3 = outFile "scifi.wav" 10
+>                      (schroederRev <<< (myscifi1 10 (absPitch (C, 5)) 20 []))
