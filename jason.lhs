@@ -216,9 +216,9 @@ periodicity between their outputs.
 
 > allPassSection :: AudSF Double Double
 > allPassSection = proc s -> do
->       s1 <- filterAllPass (toS 347) (toS 347) 0 0.7 -< s
->       s2 <- filterAllPass (toS 113) (toS 113) 0 0.7 -< s1
->       s3 <- filterAllPass (toS 37) (toS 37) 0 0.7 -< s2
+>       s1 <- filterAllPass (toS 347) (toS 347) 0 0.75 -< s
+>       s2 <- filterAllPass (toS 113) (toS 113) 0 0.75 -< s1
+>       s3 <- filterAllPass (toS 37) (toS 37) 0 0.75 -< s2
 >       outA -< s3
 
 > feedbackFilter :: Double -> Double -> Double -> AudSF Double Double
@@ -228,10 +228,10 @@ periodicity between their outputs.
 
 > schroederRev :: AudSF Double Double
 > schroederRev = proc s -> do
->       c1 <- feedbackFilter (toS 1687) 0.773 1 -< s
->       c2 <- feedbackFilter (toS 1601) 0.802 1 -< s
->       c3 <- feedbackFilter (toS 2053) 0.753 1 -< s
->       c4 <- feedbackFilter (toS 2251) 0.733 1 -< s
+>       c1 <- feedbackFilter (toS 1687) 0.805 1 -< s
+>       c2 <- feedbackFilter (toS 1601) 0.825 1 -< s
+>       c3 <- feedbackFilter (toS 2053) 0.845 1 -< s
+>       c4 <- feedbackFilter (toS 2251) 0.873 1 -< s
 >       f <- allPassSection -< (c1 + c2 + c3 + c4)
 >       outA -< f
 
@@ -242,7 +242,7 @@ Test with a short note.
 >       env <- envLineSeg [0,1,0,0] [0.05,0.25,5] -< ()
 >       s <- clarinet 5 (absPitch (A, 5)) 3 [] -< ()
 >       f <- schroederRev -< s*env
->       outA -< f/3
+>       outA -< f
 
 > testRev = outFile "shroeder.wav" 5 tRev
 
@@ -259,7 +259,7 @@ Welcome to R&D.
 >           d     = fromRational dur
 >       in proc () -> do
 >           s <- clarinet dur ap 3 [] -< ()
->           p <- flanger 0.006 0.020 1 0.5 -< s 
+>           p <- flanger 0.006 0.020 0.5 0.7 -< s 
 >           outA -< p / 10
 
 > phaserInstr :: Instr (Mono AudRate)
@@ -280,6 +280,16 @@ Welcome to R&D.
 >       in proc () -> do
 >           s <- clarinet dur ap 3 [] -< ()
 >           p <- chorus 0.6 1  -< s 
+>           outA -< p / 15
+
+> fuzzBoxInstr :: Instr (Mono AudRate)
+> fuzzBoxInstr dur ap vol [] =
+>       let f     = apToHz ap
+>           v     = fromIntegral vol
+>           d     = fromRational dur
+>       in proc () -> do
+>           s <- clarinet dur ap 3 [] -< ()
+>           p <- fuzzbox 0.1 -< s 
 >           outA -< p / 10
 
 > reverbInstr :: Instr (Mono AudRate)
@@ -288,13 +298,17 @@ Welcome to R&D.
 >           v     = fromIntegral vol
 >           d     = fromRational dur
 >       in proc () -> do
->           s <- clarinet dur ap 3 [] -< ()
->           p <- schroederRev  -< s 
->           outA -< p / 10
+>           env <- envLineSeg [0,1,0,0] [0.05,0.25,5] -< ()
+>           s <- clarinet 5 ap 3 [] -< ()
+>           f <- schroederRev -< s*env
+>           outA -< f / 10
+
+-->           p <- fuzzbox 0.1 -< s
 
 > myInstrMap :: InstrMap (AudSF () Double)
 > myInstrMap = [(myFlanger, flangerInstr), (myPhaser, phaserInstr),
->               (myChorus, chorusInstr), (myReverb, reverbInstr)]
+>               (myChorus, chorusInstr), (myReverb, reverbInstr),
+>               (myFuzzbox, fuzzBoxInstr)]
 
 > myFlanger :: InstrumentName
 > myFlanger = Custom "My Flanger"
@@ -307,6 +321,9 @@ Welcome to R&D.
 
 > myReverb :: InstrumentName
 > myReverb = Custom "My Reverb"
+
+> myFuzzbox :: InstrumentName
+> myFuzzbox = Custom "My Fuzzbox"
 
 > pentatonicScale = [(absPitch (C,5)), (absPitch (D,5)), (absPitch (E,5)),
 >                    (absPitch (G,5)), (absPitch (A,5)),
@@ -325,28 +342,85 @@ Welcome to R&D.
 > test3 = let a = (schroederRev <<< (myscifi1 10 (absPitch (C, 5)) 20 []))
 >         in outFile "scifi.wav" 10 a
 
-> p1 = line (fuse [wn, wn, wn, wn] [c 4, d 4, a 3, g 3])
-> p2 = line ([rest wn, rest wn, rest wn, rest wn] ++
->            fuse [wn, wn, wn, wn] [c 4, d 4, a 3, g 3])
-> p3 = line ([rest wn, rest wn, rest wn, rest wn] ++
->            [rest wn, rest wn, rest wn, rest wn] ++
->            fuse [wn, wn, wn, wn] [c 4, d 4, a 3, g 3])
+> kidcudi1 = [c 4, g 4, d 4, c 4]
+> kidcudi2 = [af 3, ef 4, bf 3, af 3]
 
-> (d1, sf1) = renderSF (instrument myChorus p1) myInstrMap
-> chorusMel = outFile "chorusMelody.wav" d1 sf1
+> p1a1 = line (fuse [wn] [kidcudi1!!0])
+> p1b1 = line (fuse [wn] [kidcudi2!!0])
+> p1a2 = line ([rest (wn)] ++ fuse [wn] [kidcudi1!!1])
+> p1b2 = line ([rest (wn)] ++ fuse [wn] [kidcudi2!!1])
+> p1a3 = line ([rest (wn*2)] ++ fuse [wn] [kidcudi1!!2])
+> p1b3 = line ([rest (wn*2)] ++ fuse [wn] [kidcudi2!!2])
+> p1a4 = line ([rest (wn*3)] ++ fuse [wn] [kidcudi1!!3])
+> p1b4 = line ([rest (wn*3)] ++ fuse [wn] [kidcudi2!!3])
 
-> (d2, sf2) = renderSF (instrument myFlanger p2) myInstrMap
-> flangerMel = outFile "flangerMelody.wav" d2 sf2
+--> p1b = line (fuse [wn, wn, wn, wn] kidcudi2)
 
-> (d3, sf3) = renderSF (instrument myFlanger p3) myInstrMap
-> flangerMel = outFile "flangerMelody.wav" d3 sf3
+> p2a = line ([rest (wn*4)] ++
+>            fuse [wn+qn, qn*3, wn, wn] kidcudi1)
+> p2b = line ([rest (wn*4)] ++
+>            fuse [wn+qn, qn*3, wn, wn] kidcudi2)
+> p3a = line ([rest (wn*8)] ++
+>            fuse [wn+qn, qn*3, wn, wn] kidcudi1)
+> p3b = line ([rest (wn*8)] ++
+>            fuse [wn+qn, qn*3, wn, wn] kidcudi2)
+> p4a = line ([rest (wn*12)] ++
+>            fuse [wn+qn, qn*3, wn, wn] kidcudi1)
+> p4b = line ([rest (wn*12)] ++
+>            fuse [wn+qn, qn*3, wn, wn] kidcudi2)
+> p5a = line ([rest (wn*16)] ++
+>            fuse [wn+qn, qn*3, wn, wn] kidcudi1)
+> p5b = line ([rest (wn*16)] ++
+>            fuse [wn+qn, qn*3, wn, wn] kidcudi2)
+
+> (d1a1, sf1a1) = renderSF (instrument myReverb p1a1) myInstrMap
+> (d1b1, sf1b1) = renderSF (instrument myReverb p1b1) myInstrMap
+> (d1a2, sf1a2) = renderSF (instrument myReverb p1a2) myInstrMap
+> (d1b2, sf1b2) = renderSF (instrument myReverb p1b2) myInstrMap
+> (d1a3, sf1a3) = renderSF (instrument myReverb p1a3) myInstrMap
+> (d1b3, sf1b3) = renderSF (instrument myReverb p1b3) myInstrMap
+> (d1a4, sf1a4) = renderSF (instrument myReverb p1a4) myInstrMap
+> (d1b4, sf1b4) = renderSF (instrument myReverb p1b4) myInstrMap
+
+> testRMel = outFile "rMel.wav" 5 sf1a2
+
+--> (d1a, sf1a) = renderSF (instrument myReverb p1a) myInstrMap
+--> (d1b, sf1b) = renderSF (instrument myReverb p1b) myInstrMap
+
+> (d2a, sf2a) = renderSF (instrument myFlanger p2a) myInstrMap
+> (d2b, sf2b) = renderSF (instrument myFlanger p2b) myInstrMap
+
+> (d3a, sf3a) = renderSF (instrument myPhaser p3a) myInstrMap
+> (d3b, sf3b) = renderSF (instrument myPhaser p3b) myInstrMap
+
+> (d4a, sf4a) = renderSF (instrument myFuzzbox p4a) myInstrMap
+> (d4b, sf4b) = renderSF (instrument myFuzzbox p4b) myInstrMap
+
+> (d5a, sf5a) = renderSF (instrument myChorus p5a) myInstrMap
+> (d5b, sf5b) = renderSF (instrument myChorus p5b) myInstrMap
 
 > comp ::  AudSF () Double
 > comp = proc () -> do
->       a <- myscifi1 10 (absPitch (C, 5)) 20 [] -< ()
->       b <- sf1 -< ()
->       c <- sf2 -< ()
->       d <- sf3 -< ()
->       outA -< a+b+c+d
+>       s1a1 <- sf1a1 -< ()
+>       s1b1 <- sf1b1 -< ()
+>       s1a2 <- sf1a2 -< ()
+>       s1b2 <- sf1b2 -< ()
+>       s1a3 <- sf1a3 -< ()
+>       s1b3 <- sf1b3 -< ()
+>       s1a4 <- sf1a4 -< ()
+>       s1b4 <- sf1b4 -< ()
 
-> testComp = outFile "comp.wav" 20 comp
+>       s2a <- sf2a -< ()
+>       s2b <- sf2b -< ()
+>       s3a <- sf3a -< ()
+>       s3b <- sf3b -< ()
+>       s4a <- sf4a -< ()
+>       s4b <- sf4b -< ()
+>       s5a <- sf5a -< ()
+>       s5b <- sf5b -< ()
+>       outA -< s1a1 + s1b1 + s1a2 + s1b2 + s1a3 + s1b3 + s1a4 + s1b4 +
+>               s2a + s2b + s3a + s3b + s4a + s4b + s5a + s5b
+
+-->       a <- myscifi1 10 (absPitch (C, 5)) 20 [] -< ()
+
+> testComp = outFile "comp.wav" 8 comp
