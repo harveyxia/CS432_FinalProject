@@ -56,6 +56,10 @@ Utility Code
 >   sig <- osc sinTab 0 -< env
 >   outA -< sig
 
+> fuse       :: [Dur] -> [Dur -> Music a] -> [Music a]
+> fuse (d:ds) (n:ns) = (n d) : fuse ds ns
+> fuse [] []         = []
+
 toS is a function that converts a delay time in terms of table size to its
 corresponding delay in terms of seconds. In other words, toS outputs the seconds
 that it would take to sample through a table of size s at a rate of 44.1 kHz.
@@ -247,6 +251,62 @@ Composition
 
 Welcome to R&D.
 
+> flangerInstr :: Instr (Mono AudRate)
+> flangerInstr dur ap vol [] =
+>       let f     = apToHz ap
+>           v     = fromIntegral vol
+>           d     = fromRational dur
+>       in proc () -> do
+>           s <- clarinet dur ap 3 [] -< ()
+>           p <- flanger (toS 50) (toS 2000) 0.4 1 -< s 
+>           outA -< p / 10
+
+> phaserInstr :: Instr (Mono AudRate)
+> phaserInstr dur ap vol [] =
+>       let f     = apToHz ap
+>           v     = fromIntegral vol
+>           d     = fromRational dur
+>       in proc () -> do
+>           s <- clarinet dur ap 3 [] -< ()
+>           p <- phaser 0.05 0.15 0.6 0.6 1 -< s 
+>           outA -< p / 10
+
+> chorusInstr :: Instr (Mono AudRate)
+> chorusInstr dur ap vol [] =
+>       let f     = apToHz ap
+>           v     = fromIntegral vol
+>           d     = fromRational dur
+>       in proc () -> do
+>           s <- clarinet dur ap 3 [] -< ()
+>           p <- chorus 0.6 1  -< s 
+>           outA -< p / 10
+
+> reverbInstr :: Instr (Mono AudRate)
+> reverbInstr dur ap vol [] =
+>       let f     = apToHz ap
+>           v     = fromIntegral vol
+>           d     = fromRational dur
+>       in proc () -> do
+>           s <- clarinet dur ap 3 [] -< ()
+>           p <- schroederRev  -< s 
+>           outA -< p / 10
+
+> myInstrMap :: InstrMap (AudSF () Double)
+> myInstrMap = [(myFlanger, flangerInstr), (myPhaser, phaserInstr),
+>               (myChorus, chorusInstr), (myReverb, reverbInstr)]
+
+> myFlanger :: InstrumentName
+> myFlanger = Custom "My Flanger"
+
+> myPhaser :: InstrumentName
+> myPhaser = Custom "My Phaser"
+
+> myChorus :: InstrumentName
+> myChorus = Custom "My Chorus"
+
+> myReverb :: InstrumentName
+> myReverb = Custom "My Reverb"
+
 > pentatonicScale = [(absPitch (C,5)), (absPitch (D,5)), (absPitch (E,5)),
 >                    (absPitch (G,5)), (absPitch (A,5)),
 >                    (absPitch (C,4)), (absPitch (D,4)), (absPitch (E,4)),
@@ -263,3 +323,21 @@ Welcome to R&D.
 
 > test3 = let a = (schroederRev <<< (myscifi1 10 (absPitch (C, 5)) 20 []))
 >         in outFile "scifi.wav" 10 a
+
+> p1 = line (fuse [wn, wn, wn, wn] [c 4, d 4, a 3, g 3])
+> r1 = line ([rest wn, rest wn, rest wn, rest wn] ++ fuse [wn, wn, wn, wn] [c 4, d 4, a 3, g 3])
+
+> (d1, sf1) = renderSF (instrument myChorus p1) myInstrMap
+> chorusMel = outFile "chorusMelody.wav" d1 sf1
+
+> (d2, sf2) = renderSF (instrument myFlanger r1) myInstrMap
+> flangerMel = outFile "flangerMelody.wav" d2 sf2
+
+> comp ::  AudSF () Double
+> comp = proc () -> do
+>       a <- myscifi1 10 (absPitch (C, 5)) 20 [] -< ()
+>       b <- sf1 -< ()
+>       c <- sf2 -< ()
+>       outA -< a+b+c
+
+> testComp = outFile "comp.wav" 10 comp
