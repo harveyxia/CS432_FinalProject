@@ -177,10 +177,10 @@ A fuzzbox effect that clips off the peaks of a signal to produce a distorted,
 
 dep = depth of distortion
 
-> fuzzbox :: Double -> Double -> AudSF Double Double
-> fuzzbox dep vol =
+> fuzzbox :: Double -> AudSF Double Double
+> fuzzbox dep =
 >   proc s -> do
->       outA -< (if (abs (s*(1+dep))) > 1 then (if s < 0 then (-1) else 1) else s) * (vol / 100)
+>       outA -< if (abs (s*(1+dep))) > 1 then (if s < 0 then (-1) else 1) else s
 
 > vibrato :: Clock c => Double -> Double -> SigFun c Double Double
 > vibrato vfrq dep = proc afrq -> do
@@ -201,7 +201,7 @@ dep = depth of distortion
 >         a <- sig -< ()
 >         outA -< a * v
 
-> testFB = outFile "fuzzbox.wav" 5 ((fuzzbox 0.7 50) <<< (electro 10 35 20 []))
+> testFB = outFile "fuzzbox.wav" 5 ((fuzzbox 0.7) <<< (electro 10 35 20 []))
 
 ================================================================================
 Schroeder Reverb
@@ -301,7 +301,7 @@ Welcome to R&D.
 >           env <- envLineSeg [0,1,0,0] [0.05,0.25,5] -< ()
 >           s <- clarinet 5 ap 3 [] -< ()
 >           f <- schroederRev -< s*env
->           outA -< f / 10
+>           outA -< f / 5
 
 -->           p <- fuzzbox 0.1 -< s
 
@@ -423,4 +423,4 @@ Welcome to R&D.
 
 -->       a <- myscifi1 10 (absPitch (C, 5)) 20 [] -< ()
 
-> testComp = outFile "comp.wav" 8 comp
+> testComp = outFile "comp.wav" 40 comp
