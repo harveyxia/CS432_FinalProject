@@ -7,6 +7,7 @@
 ================================================================================
 SOURCES
 ================================================================================
+- https://ccrma.stanford.edu/~jos/pasp/Flanging.html
 - http://en.wikipedia.org/wiki/Phaser_(effect)
 - https://ccrma.stanford.edu/~jos/pasp/Allpass_Two_Combs.html
 - https://ccrma.stanford.edu/~jos/pasp/Phasing_First_Order_Allpass_Filters.html
@@ -83,14 +84,14 @@ If depth is set to a negative value, the flanger is in inverted mode.
 >       let middle = (dmin + dmax)/2
 >           mod = dmax - middle
 >       in proc s -> do
->           sin <- osc sinTab 0 -< freq
->           g <- delayLine1 1 -< (s, middle + (mod * sin))
+>           sin <- oscI sinTab 0 -< freq
+>           rec g <- delayLine1 1 -< (s + 0.4*g, middle + (mod * sin))
 >           outA -< depth*g + s
 
 > tFlanger :: AudSF () Double
 > tFlanger = proc () -> do
 >       s <- clarinet 5 (absPitch (A, 5)) 3 [] -< ()
->       f <- flanger (toS 50) (toS 2000) 0.4 1 -< s
+>       f <- flanger 0.006 0.020 1 0.5 -< s
 >       outA -< f/5
 
 > testFlanger = outFile "flanger.wav" 5 tFlanger
@@ -258,7 +259,7 @@ Welcome to R&D.
 >           d     = fromRational dur
 >       in proc () -> do
 >           s <- clarinet dur ap 3 [] -< ()
->           p <- flanger (toS 50) (toS 2000) 0.4 1 -< s 
+>           p <- flanger 0.006 0.020 1 0.5 -< s 
 >           outA -< p / 10
 
 > phaserInstr :: Instr (Mono AudRate)
@@ -325,19 +326,27 @@ Welcome to R&D.
 >         in outFile "scifi.wav" 10 a
 
 > p1 = line (fuse [wn, wn, wn, wn] [c 4, d 4, a 3, g 3])
-> r1 = line ([rest wn, rest wn, rest wn, rest wn] ++ fuse [wn, wn, wn, wn] [c 4, d 4, a 3, g 3])
+> p2 = line ([rest wn, rest wn, rest wn, rest wn] ++
+>            fuse [wn, wn, wn, wn] [c 4, d 4, a 3, g 3])
+> p3 = line ([rest wn, rest wn, rest wn, rest wn] ++
+>            [rest wn, rest wn, rest wn, rest wn] ++
+>            fuse [wn, wn, wn, wn] [c 4, d 4, a 3, g 3])
 
 > (d1, sf1) = renderSF (instrument myChorus p1) myInstrMap
 > chorusMel = outFile "chorusMelody.wav" d1 sf1
 
-> (d2, sf2) = renderSF (instrument myFlanger r1) myInstrMap
+> (d2, sf2) = renderSF (instrument myFlanger p2) myInstrMap
 > flangerMel = outFile "flangerMelody.wav" d2 sf2
+
+> (d3, sf3) = renderSF (instrument myFlanger p3) myInstrMap
+> flangerMel = outFile "flangerMelody.wav" d3 sf3
 
 > comp ::  AudSF () Double
 > comp = proc () -> do
 >       a <- myscifi1 10 (absPitch (C, 5)) 20 [] -< ()
 >       b <- sf1 -< ()
 >       c <- sf2 -< ()
->       outA -< a+b+c
+>       d <- sf3 -< ()
+>       outA -< a+b+c+d
 
-> testComp = outFile "comp.wav" 10 comp
+> testComp = outFile "comp.wav" 20 comp
