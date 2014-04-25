@@ -90,8 +90,8 @@ If depth is set to a negative value, the flanger is in inverted mode.
 
 > tFlanger :: AudSF () Double
 > tFlanger = proc () -> do
->       s <- clarinet 5 (absPitch (A, 5)) 3 [] -< ()
->       f <- flanger 0.006 0.020 1 0.5 -< s
+>       s <- clarinet 5 (absPitch (A, 3)) 3 [] -< ()
+>       f <- flanger 0.006 0.020 1 0.3 -< s
 >       outA -< f/5
 
 > testFlanger = outFile "flanger.wav" 5 tFlanger
@@ -247,6 +247,36 @@ Test with a short note.
 > testRev = outFile "shroeder.wav" 5 tRev
 
 ================================================================================
+Wahwah
+================================================================================
+
+This sound effect takes a signal and oscillates the amplitude of its tremble
+frequencies, producing a sound similar to someone making a "wah wah" sound.
+
+freq = the frequency of the treble amplitude oscillation
+dep  = the depth of the oscillation
+
+> wahwah :: Double -> Double -> AudSF Double Double
+> wahwah freq dep =
+>   proc s -> do
+>       sin  <- osc sinTab 0   -< freq
+>       treb <- filterLowPass  -< (s, 1900)
+>       bass <- filterHighPass -< (s, 1800)
+>       outA -< (bass + treb * ((dep * sin) + 0.5 * dep)) / 2
+
+> wahSig :: AudSF () Double
+> wahSig =
+>   proc () -> do
+>       s1 <- osc sinTab 0 -< 440
+>       s2 <- osc sinTab 0 -< 560
+>       s3 <- osc sinTab 0 -< 700
+>       s4 <- osc sinTab 0 -< 880
+>       s5 <- osc sinTab 0 -< 1760
+>       outA -< (s1 + s2 + s3 + s4 + s5) / 5
+
+> testWahwah = outFile "wah.wav" 5 (wahSig >>> wahwah 4 1)
+
+================================================================================
 Composition
 ================================================================================
 
@@ -312,8 +342,6 @@ Welcome to R&D.
 >           s <- clarinet dur ap 3 [] -< ()
 >           p <- wahwah 4 1 -< s 
 >           outA -< p / 10
-
--->           p <- fuzzbox 0.1 -< s
 
 > myInstrMap :: InstrMap (AudSF () Double)
 > myInstrMap = [(myFlanger, flangerInstr), (myPhaser, phaserInstr),
