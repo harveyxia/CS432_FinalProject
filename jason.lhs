@@ -303,12 +303,22 @@ Welcome to R&D.
 >           f <- schroederRev -< s*env
 >           outA -< f / 5
 
+> wahwahInstr :: Instr (Mono AudRate)
+> wahwahInstr dur ap vol [] =
+>       let f     = apToHz ap
+>           v     = fromIntegral vol
+>           d     = fromRational dur
+>       in proc () -> do
+>           s <- clarinet dur ap 3 [] -< ()
+>           p <- wahwah 4 1 -< s 
+>           outA -< p / 10
+
 -->           p <- fuzzbox 0.1 -< s
 
 > myInstrMap :: InstrMap (AudSF () Double)
 > myInstrMap = [(myFlanger, flangerInstr), (myPhaser, phaserInstr),
 >               (myChorus, chorusInstr), (myReverb, reverbInstr),
->               (myFuzzbox, fuzzBoxInstr)]
+>               (myFuzzbox, fuzzBoxInstr), (myWahwah, wahwahInstr)]
 
 > myFlanger :: InstrumentName
 > myFlanger = Custom "My Flanger"
@@ -324,6 +334,9 @@ Welcome to R&D.
 
 > myFuzzbox :: InstrumentName
 > myFuzzbox = Custom "My Fuzzbox"
+
+> myWahwah :: InstrumentName
+> myWahwah = Custom "My Wahwah"
 
 > pentatonicScale = [(absPitch (C,5)), (absPitch (D,5)), (absPitch (E,5)),
 >                    (absPitch (G,5)), (absPitch (A,5)),
@@ -372,6 +385,10 @@ Welcome to R&D.
 >            fuse [wn+qn, qn*3, wn, wn] kidcudi1)
 > p5b = line ([rest (wn*16)] ++
 >            fuse [wn+qn, qn*3, wn, wn] kidcudi2)
+> p6a = line ([rest (wn*20)] ++
+>            fuse [wn+qn, qn*3, wn, wn] kidcudi1)
+> p6b = line ([rest (wn*20)] ++
+>            fuse [wn+qn, qn*3, wn, wn] kidcudi2)
 
 > (d1a1, sf1a1) = renderSF (instrument myReverb p1a1) myInstrMap
 > (d1b1, sf1b1) = renderSF (instrument myReverb p1b1) myInstrMap
@@ -399,6 +416,9 @@ Welcome to R&D.
 > (d5a, sf5a) = renderSF (instrument myChorus p5a) myInstrMap
 > (d5b, sf5b) = renderSF (instrument myChorus p5b) myInstrMap
 
+> (d6a, sf6a) = renderSF (instrument myWahwah p6a) myInstrMap
+> (d6b, sf6b) = renderSF (instrument myWahwah p6b) myInstrMap
+
 > comp ::  AudSF () Double
 > comp = proc () -> do
 >       s1a1 <- sf1a1 -< ()
@@ -418,9 +438,11 @@ Welcome to R&D.
 >       s4b <- sf4b -< ()
 >       s5a <- sf5a -< ()
 >       s5b <- sf5b -< ()
+>       s6a <- sf6a -< ()
+>       s6b <- sf6b -< ()
 >       outA -< s1a1 + s1b1 + s1a2 + s1b2 + s1a3 + s1b3 + s1a4 + s1b4 +
->               s2a + s2b + s3a + s3b + s4a + s4b + s5a + s5b
+>               s2a + s2b + s3a + s3b + s4a + s4b + s5a + s5b + s6a + s6b
 
 -->       a <- myscifi1 10 (absPitch (C, 5)) 20 [] -< ()
 
-> testComp = outFile "comp.wav" 40 comp
+> testComp = outFile "comp.wav" 48 comp
