@@ -5,6 +5,49 @@
 > import Data.Complex
 
 ================================================================================
+PROJECT ABSTRACT
+================================================================================
+
+In this project, we sought to implement various sound effects using signal
+functions. Our approach placed a greater emphasis on fidelity to the effects as
+they were implemented in hardware and less on aesthetics (though we think we
+produced some awesome sounds too). We've included code at the end of this file
+to showcase each of our effects.
+
+================================================================================
+THOUGHTS AND ANALYSIS
+================================================================================
+
+During our work on this project, we arrived at the realization that some effects
+were substantially more difficult to implement than others, often due to either
+an absence of online resources or a genuine difference in the complexity of
+the effects we were attempting to implement.
+
+However, another substantial difficulty we faced was the difficulty of
+generating certain sound effects in a digital medium. Often, canonical sound
+effects originate from the physical characteristics of instruments and audio
+devices. In many of these cases, the effects were discovered by accident. For
+instance, the harsh fuzzbox distortion effect we've implemented in Haskell below
+was originally the result of overdriving a tube amplifier, a now bygone piece of
+audio equipment. But in several instances, the relative ease of physically
+realizing a sound effect came into sharp contrast with the difficulty of
+realizing those effects in code (this was certainly the case for the reverb,
+phaser, and flanger effects).
+
+A more fundamental problem in implementing sound effects was determining what
+sort of sound we wanted to produce. Sometimes, after implementing an effect, we
+would be disappointed to discover that the effect simply sounded bad. While it
+wasn't hard to find examples of each of these effects online, it was a different
+story when it came to determining what an effect *ought* to sound like. Many of
+the examples we found online were either demos of electric guitar effects units
+or "impure" exaggerations of the original effects, of which we struggled to find
+even two that agreed.
+
+In the end, it took a fair bit of research and head-scratching while staring at
+block diagrams of signal processing circuits to acheive the desired effects, but
+we hope that the effort shows in the quality of these effects.
+
+================================================================================
 SOURCES
 ================================================================================
 - https://ccrma.stanford.edu/~jos/pasp/Flanging.html
@@ -50,13 +93,6 @@ Utility Code
 >           s <- osc sinTab 0 <<< constA (f*p) -< ()
 >           outA -< s * (amp p)
 
-
-> ramp1 :: AudSF () Double
-> ramp1 = proc afrq -> do
->   env <- envLine 20 10 20000 -< ()
->   sig <- osc sinTab 0 -< env
->   outA -< sig
-
 > fuse       :: [Dur] -> [Dur -> Music a] -> [Music a]
 > fuse (d:ds) (n:ns) = (n d) : fuse ds ns
 > fuse [] []         = []
@@ -71,6 +107,8 @@ that it would take to sample through a table of size s at a rate of 44.1 kHz.
 ================================================================================
 Phaser
 ================================================================================
+
+
 
 dmin = minimum delay time in seconds
 dmax = maximum delay time in seconds
@@ -100,10 +138,13 @@ If depth is set to a negative value, the flanger is in inverted mode.
 Chorus
 ================================================================================
 
+An effect that simulates the sound of several voices or instruments at roughly
+the same timbre and pitch, as is the case with a choir or an orchestra.
+
 freq = frequency of low frequency modulator
 depth = amplitude coefficient for chorus effect
 
-Chorus is implemented with 4 delay lines, each delaying the original signal
+This effect is implemented with 4 delay lines, each delaying the original signal
 by a time-varying amount (between 20 and 50 ms), according to sin waves that are
 each offset by a different phase.
 
@@ -129,11 +170,13 @@ each offset by a different phase.
 
 ================================================================================
 Phaser
-Uses phase shifting to create an interesting undulating sound
 ================================================================================
 
-An all-pass filter that shifts the phase of the signal by a changing amount,
-determined by the frequency of a sinusoidal modulator signal.
+An effect that uses phase shifting to create an interesting undulating sound.
+
+This effect was realized by an all-pass filter that shifts the phase of a
+signal by a varying amount, determined by the frequency of a sinusoidal
+modulator signal.
 
 dmin = minimum delay time in seconds
 dmax = maximum delay time in seconds
@@ -172,8 +215,8 @@ This phaser is implemented with 4 all pass filters to intensify the sweep-effect
 Fuzzbox
 ================================================================================
 
-A fuzzbox effect that clips off the peaks of a signal to produce a distorted,
-"dirty" electric guitar sound.
+An effect that clips off the peaks and troughs of a signal to produce a
+distorted, "dirty" sound, as with an electric guitar.
 
 dep = depth of distortion
 
@@ -206,6 +249,9 @@ dep = depth of distortion
 ================================================================================
 Schroeder Reverb
 ================================================================================
+
+An effect that emulates the acoustic qualities endowed to a sound when it is
+produced in a particular physical space.
 
 This reverb implementation is based on Manfred Shroeder's model. A signal is
 first passed through a parallel bank of feedback comb filters.  The output of
@@ -250,7 +296,9 @@ Test with a short note.
 Wahwah
 ================================================================================
 
-This sound effect takes a signal and oscillates the amplitude of its tremble
+An effect that gives a sound an oscillating "wah wah" sound.
+
+This effect takes a signal and oscillates the amplitude of its tremble
 frequencies, producing a sound similar to someone making a "wah wah" sound.
 
 freq = the frequency of the treble amplitude oscillation
@@ -280,7 +328,8 @@ dep  = the depth of the oscillation
 Composition
 ================================================================================
 
-Welcome to R&D.
+Below, we've provided code that showcases our sound effects. Most of it is
+overhead for the comp function, which generates the final .wav file.
 
 > flangerInstr :: Instr (Mono AudRate)
 > flangerInstr dur ap vol [] =
@@ -472,5 +521,8 @@ Welcome to R&D.
 >               s2a + s2b + s3a + s3b + s4a + s4b + s5a + s5b + s6a + s6b
 
 -->       a <- myscifi1 10 (absPitch (C, 5)) 20 [] -< ()
+
+Run this code in order to generate our showcase .wav file. Note: rendering took
+us up to five minutes.
 
 > testComp = outFile "comp.wav" 48 comp
