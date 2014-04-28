@@ -8,11 +8,11 @@
 PROJECT ABSTRACT
 ================================================================================
 
-In this project, we sought to implement various sound effects using signal
-functions. Our approach placed a greater emphasis on fidelity to the effects as
-they were implemented in hardware and less on aesthetics (though we think we
-produced some awesome sounds too). We've included code at the end of this file
-to showcase each of our effects.
+We sought to implement various sound effects using signal
+functions. Our approach placed a greater emphasis on theoretical and technical
+fidelity to the effects as they were conceived and implemented in hardware as
+well as on aesthetics. We've included code at the end of the file to showcase
+each of our effects as rendered in a wav file.
 
 ================================================================================
 THOUGHTS AND ANALYSIS
@@ -373,7 +373,7 @@ of the effects in the following succession:
 >       in proc () -> do
 >           s <- clarinet dur ap 3 [] -< ()
 >           p <- flanger 0.006 0.020 1 0.6 -< s 
->           outA -< p / 10
+>           outA -< p / 13
 
 > phaserInstr :: Instr (Mono AudRate)
 > phaserInstr dur ap vol [] =
