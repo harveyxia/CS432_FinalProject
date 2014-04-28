@@ -55,6 +55,7 @@ SOURCES
 - https://ccrma.stanford.edu/~jos/pasp/Allpass_Two_Combs.html
 - https://ccrma.stanford.edu/~jos/pasp/Phasing_First_Order_Allpass_Filters.html
 - https://ccrma.stanford.edu/~jos/pasp/Schroeder_Reverberators.html
+- http://dspwiki.com/index.php?title=Reverberation#Manfred_Schroeder_Reverberation
 - https://ccrma.stanford.edu/software/clm/compmus/clm-tutorials/processing2.html
 - http://en.wikipedia.org/wiki/Distortion_(music)
 - http://www.cs.sfu.ca/~tamaras/delayEffects/Implementation_Chorus.html
@@ -105,15 +106,23 @@ that it would take to sample through a table of size s at a rate of 44.1 kHz.
 > toS s = (s / 44100)
 
 ================================================================================
-Phaser
+Flanger
 ================================================================================
 
-
+An effect that uses delay to create an interesting sound.
 
 dmin = minimum delay time in seconds
 dmax = maximum delay time in seconds
 freq = frequency of the low frequency modulator (for delay time)
 depth = amplitude multiplier for flanged signal
+
+The flanger output sound is the sum of the original signal and a copy of that
+signal delayed by a modulating duration at a speed given by freq. We found that
+the best sound occured with a delay that modulated between 6 to 20 milliseconds
+at a frequency between 0.3 and 1.
+
+This flanger also utilizes feedback, as shown in the line starting with "rec g".
+This feedback serves to intensify the flanger effect.
 
 If depth is set to a negative value, the flanger is in inverted mode.
 
@@ -125,6 +134,8 @@ If depth is set to a negative value, the flanger is in inverted mode.
 >           sin <- oscI sinTab 0 -< freq
 >           rec g <- delayLine1 1 -< (s + 0.4*g, middle + (mod * sin))
 >           outA -< depth*g + s
+
+Test Flanger
 
 > tFlanger :: AudSF () Double
 > tFlanger = proc () -> do
@@ -146,7 +157,8 @@ depth = amplitude coefficient for chorus effect
 
 This effect is implemented with 4 delay lines, each delaying the original signal
 by a time-varying amount (between 20 and 50 ms), according to sin waves that are
-each offset by a different phase.
+each offset by a different phase. These 4 delay lines correspond to 4 different
+voices, that sound slightly different but still in unison.
 
 > chorus :: Double -> Double -> AudSF Double Double
 > chorus freq depth = proc s -> do
@@ -175,7 +187,7 @@ Phaser
 An effect that uses phase shifting to create an interesting undulating sound.
 
 This effect was realized by an all-pass filter that shifts the phase of a
-signal by a varying amount, determined by the frequency of a sinusoidal
+signal by a varying amount determined by the frequency of a sinusoidal
 modulator signal.
 
 dmin = minimum delay time in seconds
@@ -183,12 +195,18 @@ dmax = maximum delay time in seconds
 freq = frequency of the low frequency modulator (for delay time)
 g = feedforward and feedbackward coefficient
 
+The all-pass filter filters all frequencies at a gain of 1, not changing the
+amplitude. The version we implemented is a two-comb all-pass filter: a feedback
+comb filter paired with a feedforward comb filter, both with equal delays.
+Our implementation is based on the diagram found at:
+https://ccrma.stanford.edu/software/clm/compmus/clm-tutorials/ap.gif
+
 > filterAllPass :: Double -> Double -> Double -> Double -> AudSF Double Double
 > filterAllPass dmin dmax freq g =
 >       let middle = (dmin + dmax)/2
 >           mod = dmax - middle
 >       in proc s -> do
->           sin <- osc sinTab 0 -< freq
+>           sin <- osc sinTab 0.25 -< freq
 >           rec out1 <- delayLine1 1 -< (s + out1 * g, middle + (mod * sin))
 >           outA -< (out1 * (-g)) + out1
 
@@ -202,6 +220,8 @@ This phaser is implemented with 4 all pass filters to intensify the sweep-effect
 >       out3 <- filterAllPass dmin dmax freq g -< out2
 >       out4 <- filterAllPass dmin dmax freq g -< out3
 >       outA -< (s + (out4 * depth))
+
+Test the phaser:
 
 > tPhaser :: AudSF () Double
 > tPhaser = proc () -> do
@@ -260,11 +280,16 @@ the comb filters are added and fed into a series of three all-pass filters.
 Delay values of these all-pass filters are mutually prime to prevent any mutual
 periodicity between their outputs.
 
+In more detail: the feedback comb filters simulate a pair of walls, and their
+delay time represents how long it takes a wave to travel from one wall to the 
+opposite wall and back. The all-pass filters determine the intensity of the
+echo.
+
 > allPassSection :: AudSF Double Double
 > allPassSection = proc s -> do
->       s1 <- filterAllPass (toS 347) (toS 347) 0 0.75 -< s
->       s2 <- filterAllPass (toS 113) (toS 113) 0 0.75 -< s1
->       s3 <- filterAllPass (toS 37) (toS 37) 0 0.75 -< s2
+>       s1 <- filterAllPass (toS 1019) (toS 1019) 0 0.75 -< s
+>       s2 <- filterAllPass (toS 347) (toS 347) 0 0.75 -< s1
+>       s3 <- filterAllPass (toS 113) (toS 113) 0 0.75 -< s2
 >       outA -< s3
 
 > feedbackFilter :: Double -> Double -> Double -> AudSF Double Double
@@ -274,8 +299,8 @@ periodicity between their outputs.
 
 > schroederRev :: AudSF Double Double
 > schroederRev = proc s -> do
->       c1 <- feedbackFilter (toS 1687) 0.805 1 -< s
->       c2 <- feedbackFilter (toS 1601) 0.825 1 -< s
+>       c1 <- feedbackFilter (toS 2452) 0.805 1 -< s
+>       c2 <- feedbackFilter (toS 2743) 0.825 1 -< s
 >       c3 <- feedbackFilter (toS 2053) 0.845 1 -< s
 >       c4 <- feedbackFilter (toS 2251) 0.873 1 -< s
 >       f <- allPassSection -< (c1 + c2 + c3 + c4)
@@ -329,7 +354,16 @@ Composition
 ================================================================================
 
 Below, we've provided code that showcases our sound effects. Most of it is
-overhead for the comp function, which generates the final .wav file.
+overhead for the comp function, which generates the final .wav file. The
+wav file takes some time to render (it's about 8.5 mb). It demonstrates each
+of the effects in the following succession:
+
+1. Schroeder reverb
+2. Flanger
+3. Phaser
+4. Fuzzbox
+5. Chorus
+6. Wahwah
 
 > flangerInstr :: Instr (Mono AudRate)
 > flangerInstr dur ap vol [] =
@@ -338,7 +372,7 @@ overhead for the comp function, which generates the final .wav file.
 >           d     = fromRational dur
 >       in proc () -> do
 >           s <- clarinet dur ap 3 [] -< ()
->           p <- flanger 0.006 0.020 0.5 0.7 -< s 
+>           p <- flanger 0.006 0.020 1 0.6 -< s 
 >           outA -< p / 10
 
 > phaserInstr :: Instr (Mono AudRate)
@@ -359,7 +393,7 @@ overhead for the comp function, which generates the final .wav file.
 >       in proc () -> do
 >           s <- clarinet dur ap 3 [] -< ()
 >           p <- chorus 0.6 1  -< s 
->           outA -< p / 15
+>           outA -< p / 20
 
 > fuzzBoxInstr :: Instr (Mono AudRate)
 > fuzzBoxInstr dur ap vol [] =
@@ -380,7 +414,7 @@ overhead for the comp function, which generates the final .wav file.
 >           env <- envLineSeg [0,1,0,0] [0.05,0.25,5] -< ()
 >           s <- clarinet 5 ap 3 [] -< ()
 >           f <- schroederRev -< s*env
->           outA -< f / 5
+>           outA -< f*3
 
 > wahwahInstr :: Instr (Mono AudRate)
 > wahwahInstr dur ap vol [] =
@@ -415,57 +449,28 @@ overhead for the comp function, which generates the final .wav file.
 > myWahwah :: InstrumentName
 > myWahwah = Custom "My Wahwah"
 
-> pentatonicScale = [(absPitch (C,5)), (absPitch (D,5)), (absPitch (E,5)),
->                    (absPitch (G,5)), (absPitch (A,5)),
->                    (absPitch (C,4)), (absPitch (D,4)), (absPitch (E,4)),
->                    (absPitch (G,4)), (absPitch (A,4))]
-
-> mel = [(absPitch (C,5)), (absPitch (D,5)), (absPitch (E,5))]
-
-> myscifi1 :: Instr (Mono AudRate)
-> myscifi1 dur ap vol [] =
->   let v = fromIntegral vol / 100 in proc () -> do
->       a1   <- noiseBLH 42 -< 5
->       a2   <- osc sinTab 0 -< (map(apToHz)pentatonicScale)!!(round ((a1^2) * 9))
->       outA -< a2 * v
-
-> test3 = let a = (schroederRev <<< (myscifi1 10 (absPitch (C, 5)) 20 []))
->         in outFile "scifi.wav" 10 a
-
 > kidcudi1 = [c 4, g 4, d 4, c 4]
 > kidcudi2 = [af 3, ef 4, bf 3, af 3]
 
 > p1a1 = line (fuse [wn] [kidcudi1!!0])
 > p1b1 = line (fuse [wn] [kidcudi2!!0])
-> p1a2 = line ([rest (wn)] ++ fuse [wn] [kidcudi1!!1])
-> p1b2 = line ([rest (wn)] ++ fuse [wn] [kidcudi2!!1])
+> p1a2 = line ([rest (wn)]   ++ fuse [wn] [kidcudi1!!1])
+> p1b2 = line ([rest (wn)]   ++ fuse [wn] [kidcudi2!!1])
 > p1a3 = line ([rest (wn*2)] ++ fuse [wn] [kidcudi1!!2])
 > p1b3 = line ([rest (wn*2)] ++ fuse [wn] [kidcudi2!!2])
 > p1a4 = line ([rest (wn*3)] ++ fuse [wn] [kidcudi1!!3])
 > p1b4 = line ([rest (wn*3)] ++ fuse [wn] [kidcudi2!!3])
 
---> p1b = line (fuse [wn, wn, wn, wn] kidcudi2)
-
-> p2a = line ([rest (wn*4)] ++
->            fuse [wn+qn, qn*3, wn, wn] kidcudi1)
-> p2b = line ([rest (wn*4)] ++
->            fuse [wn+qn, qn*3, wn, wn] kidcudi2)
-> p3a = line ([rest (wn*8)] ++
->            fuse [wn+qn, qn*3, wn, wn] kidcudi1)
-> p3b = line ([rest (wn*8)] ++
->            fuse [wn+qn, qn*3, wn, wn] kidcudi2)
-> p4a = line ([rest (wn*12)] ++
->            fuse [wn+qn, qn*3, wn, wn] kidcudi1)
-> p4b = line ([rest (wn*12)] ++
->            fuse [wn+qn, qn*3, wn, wn] kidcudi2)
-> p5a = line ([rest (wn*16)] ++
->            fuse [wn+qn, qn*3, wn, wn] kidcudi1)
-> p5b = line ([rest (wn*16)] ++
->            fuse [wn+qn, qn*3, wn, wn] kidcudi2)
-> p6a = line ([rest (wn*20)] ++
->            fuse [wn+qn, qn*3, wn, wn] kidcudi1)
-> p6b = line ([rest (wn*20)] ++
->            fuse [wn+qn, qn*3, wn, wn] kidcudi2)
+> p2a = line ([rest (wn*4)]  ++ fuse [wn*2, wn*2] [c 4, g 4])
+> p2b = line ([rest (wn*4)]  ++ fuse [wn*2, wn*2] [af 3, ef 3])
+> p3a = line ([rest (wn*8)]  ++ fuse [wn*2, wn*2] [d 4, c 4])
+> p3b = line ([rest (wn*8)]  ++ fuse [wn*2, wn*2] [bf 3, af 3])
+> p4a = line ([rest (wn*12)] ++ fuse [wn+qn, qn*3, wn, wn] kidcudi1)
+> p4b = line ([rest (wn*12)] ++ fuse [wn+qn, qn*3, wn, wn] kidcudi2)
+> p5a = line ([rest (wn*16)] ++ fuse [wn+qn, qn*3, wn, wn] kidcudi1)
+> p5b = line ([rest (wn*16)] ++ fuse [wn+qn, qn*3, wn, wn] kidcudi2)
+> p6a = line ([rest (wn*20)] ++ fuse [wn+qn, qn*3, wn, wn] kidcudi1)
+> p6b = line ([rest (wn*20)] ++ fuse [wn+qn, qn*3, wn, wn] kidcudi2)
 
 > (d1a1, sf1a1) = renderSF (instrument myReverb p1a1) myInstrMap
 > (d1b1, sf1b1) = renderSF (instrument myReverb p1b1) myInstrMap
@@ -475,24 +480,14 @@ overhead for the comp function, which generates the final .wav file.
 > (d1b3, sf1b3) = renderSF (instrument myReverb p1b3) myInstrMap
 > (d1a4, sf1a4) = renderSF (instrument myReverb p1a4) myInstrMap
 > (d1b4, sf1b4) = renderSF (instrument myReverb p1b4) myInstrMap
-
-> testRMel = outFile "rMel.wav" 5 sf1a2
-
---> (d1a, sf1a) = renderSF (instrument myReverb p1a) myInstrMap
---> (d1b, sf1b) = renderSF (instrument myReverb p1b) myInstrMap
-
 > (d2a, sf2a) = renderSF (instrument myFlanger p2a) myInstrMap
 > (d2b, sf2b) = renderSF (instrument myFlanger p2b) myInstrMap
-
 > (d3a, sf3a) = renderSF (instrument myPhaser p3a) myInstrMap
 > (d3b, sf3b) = renderSF (instrument myPhaser p3b) myInstrMap
-
 > (d4a, sf4a) = renderSF (instrument myFuzzbox p4a) myInstrMap
 > (d4b, sf4b) = renderSF (instrument myFuzzbox p4b) myInstrMap
-
 > (d5a, sf5a) = renderSF (instrument myChorus p5a) myInstrMap
 > (d5b, sf5b) = renderSF (instrument myChorus p5b) myInstrMap
-
 > (d6a, sf6a) = renderSF (instrument myWahwah p6a) myInstrMap
 > (d6b, sf6b) = renderSF (instrument myWahwah p6b) myInstrMap
 
@@ -506,7 +501,6 @@ overhead for the comp function, which generates the final .wav file.
 >       s1b3 <- sf1b3 -< ()
 >       s1a4 <- sf1a4 -< ()
 >       s1b4 <- sf1b4 -< ()
-
 >       s2a <- sf2a -< ()
 >       s2b <- sf2b -< ()
 >       s3a <- sf3a -< ()
@@ -517,10 +511,8 @@ overhead for the comp function, which generates the final .wav file.
 >       s5b <- sf5b -< ()
 >       s6a <- sf6a -< ()
 >       s6b <- sf6b -< ()
->       outA -< s1a1 + s1b1 + s1a2 + s1b2 + s1a3 + s1b3 + s1a4 + s1b4 +
+>       outA -< s1a1/7 + s1b1/7 + s1a2 + s1b2 + s1a3 + s1b3 + s1a4/7 + s1b4/7 +
 >               s2a + s2b + s3a + s3b + s4a + s4b + s5a + s5b + s6a + s6b
-
--->       a <- myscifi1 10 (absPitch (C, 5)) 20 [] -< ()
 
 Run this code in order to generate our showcase .wav file. Note: rendering took
 us up to five minutes.
