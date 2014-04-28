@@ -58,6 +58,7 @@ SOURCES
 - http://dspwiki.com/index.php?title=Reverberation#Manfred_Schroeder_Reverberation
 - https://ccrma.stanford.edu/software/clm/compmus/clm-tutorials/processing2.html
 - http://en.wikipedia.org/wiki/Distortion_(music)
+- http://en.wikipedia.org/wiki/Wah-wah_(music)#Technique
 - http://www.cs.sfu.ca/~tamaras/delayEffects/Implementation_Chorus.html
 
 ================================================================================
@@ -238,6 +239,11 @@ Fuzzbox
 An effect that clips off the peaks and troughs of a signal to produce a
 distorted, "dirty" sound, as with an electric guitar.
 
+This effect is simple to realize, but this comes at the cost of robustness.
+Since it merely limits the amplitude of the input signal but cannot actively
+detect the amplitude of a signal at a given time, a very soft signal and/or a
+low depth value may fail to produce the distortion effect.
+
 dep = depth of distortion
 
 > fuzzbox :: Double -> AudSF Double Double
@@ -325,6 +331,11 @@ An effect that gives a sound an oscillating "wah wah" sound.
 
 This effect takes a signal and oscillates the amplitude of its tremble
 frequencies, producing a sound similar to someone making a "wah wah" sound.
+To realize this effect, our implementation splits the input signal and runs each
+through a bandpass filter--one through a lowpass and other other through a high-
+pass. The signal run through the highpass filter is then multiplied by an
+oscillating value, varying its amplitude. The two signals are then recombined,
+producing a single signal whose higher frequencies sinusoidally fade in and out.
 
 freq = the frequency of the treble amplitude oscillation
 dep  = the depth of the oscillation
@@ -517,4 +528,4 @@ of the effects in the following succession:
 Run this code in order to generate our showcase .wav file. Note: rendering took
 us up to five minutes.
 
-> testComp = outFile "comp.wav" 48 comp
+> testComp = outFile "EffectsShowcase.wav" 48 comp
